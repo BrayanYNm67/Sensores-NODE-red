@@ -1,0 +1,103 @@
+////////////////////////////////
+ball-switch
+//////////////////////////////
+
+from umqtt.simple import MQTTClient
+from machine import Pin
+import time
+
+ssid = "No Paso Internet Ivana"
+password = "123456789"
+mqtt_broker = "192.168.40.200"
+mqtt_topic = "utng/arg/ball"
+
+# Configuración del pin del sensor Ball Switch
+sensor_pin = Pin(14, Pin.IN)  # Ajusta el número del pin según tu configuración
+estado_anterior = 0
+
+def connect_wifi():
+    import network
+    sta_if = network.WLAN(network.STA_IF)
+    if not sta_if.isconnected():
+        print("Conectando a WiFi...")
+        sta_if.active(True)
+        sta_if.connect(ssid, password)
+        while not sta_if.isconnected():
+            pass
+    print("Conexión WiFi exitosa")
+
+def connect_mqtt():
+    client = MQTTClient("esp32", mqtt_broker)
+    client.connect()
+    print("Conexión MQTT exitosa")
+    return client
+
+def publish_inclinacion(client):
+    valor = sensor_pin.value()
+    global estado_anterior
+    if valor != estado_anterior:
+        if valor == 1:
+            client.publish(mqtt_topic, b"Inclinación")
+            print("Inclinación detectada")
+        estado_anterior = valor
+
+def main():
+    connect_wifi()
+    mqtt_client = connect_mqtt()
+
+    while True:
+        publish_inclinacion(mqtt_client)  # Publicar inclinación
+        time.sleep(0.1)  # Esperar un tiempo antes de la próxima lectura
+
+if __name__ == "__main__":
+    main()
+
+
+
+/////////////////////////////
+json
+////////////////////////////////
+
+[
+    {
+        "id": "d0b8e3c022d68e53",
+        "type": "postgresql",
+        "z": "08cba04a851a3b02",
+        "name": "",
+        "query": "INSERT INTO inclinacion (timestamp,value) VALUES (CURRENT_TIMESTAMP,'{{msg.payload}}');",
+        "postgreSQLConfig": "9277f660ec41eacb",
+        "split": false,
+        "rowsPerMsg": 1,
+        "outputs": 1,
+        "x": 610,
+        "y": 100,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "9277f660ec41eacb",
+        "type": "postgreSQLConfig",
+        "name": "equipo5",
+        "host": "localhost",
+        "hostFieldType": "str",
+        "port": "5432",
+        "portFieldType": "num",
+        "database": "equipo5",
+        "databaseFieldType": "str",
+        "ssl": "false",
+        "sslFieldType": "bool",
+        "applicationName": "",
+        "applicationNameType": "str",
+        "max": "10",
+        "maxFieldType": "num",
+        "idle": "1000",
+        "idleFieldType": "num",
+        "connectionTimeout": "10000",
+        "connectionTimeoutFieldType": "num",
+        "user": "postgres",
+        "userFieldType": "str",
+        "password": "12345",
+        "passwordFieldType": "str"
+    }
+]

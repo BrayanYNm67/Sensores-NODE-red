@@ -1,0 +1,209 @@
+//////////////////7
+tap module display
+/////////////////////
+from umqtt.simple import MQTTClient
+from machine import Pin, I2C, Timer
+import time
+import ssd1306
+
+ssid = "No Paso Internet Ivana"
+password = "123456789"
+mqtt_broker = "192.168.8.200"
+mqtt_topic = "utng/arg/tap_module"
+
+# Configuración del pin al que está conectado el sensor KY-031 (tap module)
+sensor_pin = Pin(14, Pin.IN)
+
+# Configuración de la comunicación I2C para el display OLED
+i2c = I2C(-1, Pin(5), Pin(4))
+oled_width = 128
+oled_height = 64
+oled = ssd1306.SSD1306_I2C(oled_width, oled_height, i2c)
+
+# Temporizador para controlar la duración del mensaje en el display
+display_timer = Timer(-1)
+
+def connect_wifi():
+    import network
+    sta_if = network.WLAN(network.STA_IF)
+    if not sta_if.isconnected():
+        print("Conectando a WiFi...")
+        sta_if.active(True)
+        sta_if.connect(ssid, password)
+        while not sta_if.isconnected():
+            pass
+    print("Conexión WiFi exitosa")
+
+def connect_mqtt():
+    client = MQTTClient("esp32", mqtt_broker)
+    try:
+        client.connect()
+        print("Conexión MQTT exitosa")
+        return client
+    except Exception as e:
+        print("Error al conectar MQTT:", e)
+        return None
+
+def handle_vibration(pin, mqtt_client):
+    if pin.value() == 1:  
+        print("¡Vibración detectada!")
+        mqtt_client = publish_data(mqtt_client)
+        show_message("¡Vibración detectada!")
+
+def publish_data(client):
+    try:
+        payload = "¡Vibración detectada!"
+        client.publish(mqtt_topic, payload)
+        print(f"Dato publicado: {payload}")
+    except Exception as e:
+        print("Error al publicar dato:", e)
+        # Intentar reconectar MQTT
+        client = connect_mqtt()
+    return client
+
+def show_message(message):
+    oled.fill(0)
+    oled.text(message, 0, 0)
+    oled.show()
+    # Iniciar el temporizador para borrar el mensaje después de 3 segundos
+    display_timer.init(period=3000, mode=Timer.ONE_SHOT, callback=lambda t: oled.fill(0))
+
+def main():
+    connect_wifi()
+    mqtt_client = connect_mqtt()
+
+    sensor_pin.irq(trigger=Pin.IRQ_FALLING, handler=lambda pin: handle_vibration(pin, mqtt_client))
+
+    while True:
+        try:
+            time.sleep(10)
+        except KeyboardInterrupt:
+            print("Deteniendo el programa...")
+            break
+
+if __name__ == "__main__":
+    main()
+
+
+/////////////////////
+json
+///////////////////////
+
+[
+    {
+        "id": "d0db2e41bfaaa05f",
+        "type": "tab",
+        "label": "Flujo 4",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "817dd0fea48eeddd",
+        "type": "mqtt in",
+        "z": "d0db2e41bfaaa05f",
+        "name": "",
+        "topic": "utng/arg/tap_module",
+        "qos": "2",
+        "datatype": "auto",
+        "broker": "894951dafb5e412e",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 90,
+        "y": 160,
+        "wires": [
+            [
+                "2522f0b2896c0fc0",
+                "7e9cf9deb649fb01"
+            ]
+        ]
+    },
+    {
+        "id": "7e9cf9deb649fb01",
+        "type": "postgresql",
+        "z": "d0db2e41bfaaa05f",
+        "name": "",
+        "query": "INSERT INTO mediciones (mensaje) VALUES ('{{msg.payload}}');",
+        "postgreSQLConfig": "9277f660ec41eacb",
+        "split": false,
+        "rowsPerMsg": 1,
+        "outputs": 1,
+        "x": 610,
+        "y": 100,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "2522f0b2896c0fc0",
+        "type": "debug",
+        "z": "d0db2e41bfaaa05f",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 390,
+        "y": 280,
+        "wires": []
+    },
+    {
+        "id": "894951dafb5e412e",
+        "type": "mqtt-broker",
+        "name": "",
+        "broker": "192.168.8.200",
+        "port": "1883",
+        "clientid": "",
+        "autoConnect": true,
+        "usetls": false,
+        "protocolVersion": "4",
+        "keepalive": "60",
+        "cleansession": true,
+        "autoUnsubscribe": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthPayload": "",
+        "birthMsg": {},
+        "closeTopic": "",
+        "closeQos": "0",
+        "closePayload": "",
+        "closeMsg": {},
+        "willTopic": "",
+        "willQos": "0",
+        "willPayload": "",
+        "willMsg": {},
+        "userProps": "",
+        "sessionExpiry": ""
+    },
+    {
+        "id": "9277f660ec41eacb",
+        "type": "postgreSQLConfig",
+        "name": "equipo5",
+        "host": "localhost",
+        "hostFieldType": "str",
+        "port": "5432",
+        "portFieldType": "num",
+        "database": "equipo5",
+        "databaseFieldType": "str",
+        "ssl": "false",
+        "sslFieldType": "bool",
+        "applicationName": "",
+        "applicationNameType": "str",
+        "max": "10",
+        "maxFieldType": "num",
+        "idle": "1000",
+        "idleFieldType": "num",
+        "connectionTimeout": "10000",
+        "connectionTimeoutFieldType": "num",
+        "user": "postgres",
+        "userFieldType": "str",
+        "password": "12345",
+        "passwordFieldType": "str"
+    }
+]

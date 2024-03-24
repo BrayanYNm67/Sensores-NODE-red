@@ -1,0 +1,184 @@
+//////////////////////
+tracking
+////////////////////
+
+from machine import Pin
+import time
+import network
+from umqtt.simple import MQTTClient
+
+# Definir el pin conectado al sensor KY-033
+pin_sensor = 14  # Ejemplo de pin, ajusta según tu configuración
+# Configurar el pin como entrada
+sensor = Pin(pin_sensor, Pin.IN)
+
+# Variable para rastrear el estado de la detección
+deteccion_previa = False
+
+# Configuración de WiFi y MQTT
+ssid = "No Paso Internet Ivana"
+password = "123456789"
+mqtt_broker = "192.168.40.200"
+mqtt_topic = "utng/arg/line_tracker"
+
+def connect_wifi():
+    sta_if = network.WLAN(network.STA_IF)
+    if not sta_if.isconnected():
+        print("Conectando a WiFi...")
+        sta_if.active(True)
+        sta_if.connect(ssid, password)
+        while not sta_if.isconnected():
+            pass
+    print("Conexión WiFi exitosa")
+
+def connect_mqtt():
+    client = MQTTClient("esp32", mqtt_broker)
+    client.connect()
+    print("Conexión MQTT exitosa")
+    return client
+
+def publish_mqtt_message(message):
+    client.publish(mqtt_topic, message)
+    print("Mensaje MQTT publicado: ", message)
+
+connect_wifi()
+client = connect_mqtt()
+
+while True:
+    # Leer el valor del sensor
+    valor_sensor = sensor.value()
+    
+    # Verificar si se ha detectado algo
+    if valor_sensor == 1:
+        if not deteccion_previa:  # Si no se ha detectado previamente
+            message = "Sigue la línea"
+            publish_mqtt_message(message)
+            deteccion_previa = True
+    else:
+        deteccion_previa = False  # Restablecer el estado de detección
+        
+    time.sleep(0.1)  # Esperar un corto tiempo antes de la próxima lectura
+
+
+///////////////////////
+json
+/////////////////////////
+
+[
+    {
+        "id": "0caaeb7258999f1f",
+        "type": "tab",
+        "label": "Flujo 6",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "6d886e27a5a2d023",
+        "type": "mqtt in",
+        "z": "0caaeb7258999f1f",
+        "name": "",
+        "topic": "utng/arg/line_tracker",
+        "qos": "2",
+        "datatype": "auto",
+        "broker": "894951dafb5e412e",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 130,
+        "y": 160,
+        "wires": [
+            [
+                "65fb1acde61f5a5f",
+                "e849aa1de98b35ce"
+            ]
+        ]
+    },
+    {
+        "id": "e849aa1de98b35ce",
+        "type": "postgresql",
+        "z": "0caaeb7258999f1f",
+        "name": "",
+        "query": "INSERT INTO linea (timestamp,value) VALUES (CURRENT_TIMESTAMP,'{{msg.payload}}');",
+        "postgreSQLConfig": "9277f660ec41eacb",
+        "split": false,
+        "rowsPerMsg": 1,
+        "outputs": 1,
+        "x": 630,
+        "y": 100,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "65fb1acde61f5a5f",
+        "type": "debug",
+        "z": "0caaeb7258999f1f",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 430,
+        "y": 280,
+        "wires": []
+    },
+    {
+        "id": "894951dafb5e412e",
+        "type": "mqtt-broker",
+        "name": "",
+        "broker": "192.168.40.200",
+        "port": "1883",
+        "clientid": "",
+        "autoConnect": true,
+        "usetls": false,
+        "protocolVersion": "4",
+        "keepalive": "60",
+        "cleansession": true,
+        "autoUnsubscribe": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthPayload": "",
+        "birthMsg": {},
+        "closeTopic": "",
+        "closeQos": "0",
+        "closePayload": "",
+        "closeMsg": {},
+        "willTopic": "",
+        "willQos": "0",
+        "willPayload": "",
+        "willMsg": {},
+        "userProps": "",
+        "sessionExpiry": ""
+    },
+    {
+        "id": "9277f660ec41eacb",
+        "type": "postgreSQLConfig",
+        "name": "equipo5",
+        "host": "localhost",
+        "hostFieldType": "str",
+        "port": "5432",
+        "portFieldType": "num",
+        "database": "equipo5",
+        "databaseFieldType": "str",
+        "ssl": "false",
+        "sslFieldType": "bool",
+        "applicationName": "",
+        "applicationNameType": "str",
+        "max": "10",
+        "maxFieldType": "num",
+        "idle": "1000",
+        "idleFieldType": "num",
+        "connectionTimeout": "10000",
+        "connectionTimeoutFieldType": "num",
+        "user": "postgres",
+        "userFieldType": "str",
+        "password": "12345",
+        "passwordFieldType": "str"
+    }
+]

@@ -1,0 +1,204 @@
+///////////////7
+tracking display
+///////////////7
+
+from umqtt.simple import MQTTClient
+from machine import Pin, I2C, Timer
+import time
+import ssd1306
+
+ssid = "No Paso Internet Ivana"
+password = "123456789"
+mqtt_broker = "192.168.8.200"
+mqtt_topic = "utng/arg/line_tracker"
+
+# Configuración del pin del sensor de seguimiento KY-033
+sensor_pin = Pin(14, Pin.IN)  # Ajusta el número del pin según tu configuración
+estado_anterior = 0
+
+# Configuración de la comunicación I2C para el display OLED
+i2c = I2C(-1, Pin(5), Pin(4))
+
+# Inicializar el objeto del display SSD1306
+oled_width = 128
+oled_height = 64
+oled = ssd1306.SSD1306_I2C(oled_width, oled_height, i2c)
+
+# Temporizador para controlar la duración del mensaje en el display
+display_timer = Timer(1)
+
+def connect_wifi():
+    import network
+    sta_if = network.WLAN(network.STA_IF)
+    if not sta_if.isconnected():
+        print("Conectando a WiFi...")
+        sta_if.active(True)
+        sta_if.connect(ssid, password)
+        while not sta_if.isconnected():
+            pass
+    print("Conexión WiFi exitosa")
+
+def connect_mqtt():
+    client = MQTTClient("esp32", mqtt_broker)
+    client.connect()
+    print("Conexión MQTT exitosa")
+    return client
+
+def show_message(message):
+    oled.fill(0)
+    oled.text(message, 0, 0)
+    oled.show()
+
+def clear_display(timer):
+    oled.fill(0)
+    oled.show()
+
+def publish_line_detected(client):
+    valor = sensor_pin.value()
+    global estado_anterior
+    if valor != estado_anterior:
+        if valor == 1:
+            client.publish(mqtt_topic, b"Línea encontrada")
+            print("Línea encontrada")
+            show_message("Línea encontrada")
+            display_timer.init(period=3000, mode=Timer.ONE_SHOT, callback=clear_display)
+        else:
+            print("No se detecta línea")
+            oled.fill(0)  # Borra cualquier mensaje previo en el display
+            oled.show()   # Actualiza el display para borrar el mensaje anterior
+        estado_anterior = valor
+
+def main():
+    connect_wifi()
+    mqtt_client = connect_mqtt()
+
+    while True:
+        publish_line_detected(mqtt_client)  # Publicar si se detecta la línea
+        time.sleep(0.1)  # Esperar un tiempo antes de la próxima lectura
+
+if __name__ == "__main__":
+    main()
+
+////////////////7
+json
+/////////////////
+
+
+[
+    {
+        "id": "0caaeb7258999f1f",
+        "type": "tab",
+        "label": "Flujo 6",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "6d886e27a5a2d023",
+        "type": "mqtt in",
+        "z": "0caaeb7258999f1f",
+        "name": "",
+        "topic": "utng/arg/line_tracker",
+        "qos": "2",
+        "datatype": "auto",
+        "broker": "894951dafb5e412e",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 130,
+        "y": 160,
+        "wires": [
+            [
+                "65fb1acde61f5a5f",
+                "e849aa1de98b35ce"
+            ]
+        ]
+    },
+    {
+        "id": "e849aa1de98b35ce",
+        "type": "postgresql",
+        "z": "0caaeb7258999f1f",
+        "name": "",
+        "query": "INSERT INTO linea (timestamp,value) VALUES (CURRENT_TIMESTAMP,'{{msg.payload}}');",
+        "postgreSQLConfig": "9277f660ec41eacb",
+        "split": false,
+        "rowsPerMsg": 1,
+        "outputs": 1,
+        "x": 630,
+        "y": 100,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "65fb1acde61f5a5f",
+        "type": "debug",
+        "z": "0caaeb7258999f1f",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 430,
+        "y": 280,
+        "wires": []
+    },
+    {
+        "id": "894951dafb5e412e",
+        "type": "mqtt-broker",
+        "name": "",
+        "broker": "192.168.40.200",
+        "port": "1883",
+        "clientid": "",
+        "autoConnect": true,
+        "usetls": false,
+        "protocolVersion": "4",
+        "keepalive": "60",
+        "cleansession": true,
+        "autoUnsubscribe": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthPayload": "",
+        "birthMsg": {},
+        "closeTopic": "",
+        "closeQos": "0",
+        "closePayload": "",
+        "closeMsg": {},
+        "willTopic": "",
+        "willQos": "0",
+        "willPayload": "",
+        "willMsg": {},
+        "userProps": "",
+        "sessionExpiry": ""
+    },
+    {
+        "id": "9277f660ec41eacb",
+        "type": "postgreSQLConfig",
+        "name": "equipo5",
+        "host": "localhost",
+        "hostFieldType": "str",
+        "port": "5432",
+        "portFieldType": "num",
+        "database": "equipo5",
+        "databaseFieldType": "str",
+        "ssl": "false",
+        "sslFieldType": "bool",
+        "applicationName": "",
+        "applicationNameType": "str",
+        "max": "10",
+        "maxFieldType": "num",
+        "idle": "1000",
+        "idleFieldType": "num",
+        "connectionTimeout": "10000",
+        "connectionTimeoutFieldType": "num",
+        "user": "postgres",
+        "userFieldType": "str",
+        "password": "12345",
+        "passwordFieldType": "str"
+    }
+]

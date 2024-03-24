@@ -1,0 +1,209 @@
+///////////////////////////7
+joystick
+////////////////////////7//
+
+from umqtt.simple import MQTTClient
+from machine import Pin, ADC
+import time
+
+# Configuración de la red WiFi
+ssid = "No Paso Internet Ivana"
+password = "123456789"
+# Configuración del broker MQTT
+mqtt_broker = "192.168.148.200"
+mqtt_topic = "utng/arg/joystick"  # Cambiar el tema MQTT al joystick
+
+# Configuración de los pines del joystick
+pin_x = ADC(Pin(32))  # Pin analógico para el eje X del joystick
+pin_y = ADC(Pin(34))  # Pin analógico para el eje Y del joystick
+
+# Variable para almacenar la última posición del joystick
+last_position = None
+
+def connect_wifi():
+    import network
+    sta_if = network.WLAN(network.STA_IF)
+    if not sta_if.isconnected():
+        print("Conectando a WiFi...")
+        sta_if.active(True)
+        sta_if.connect(ssid, password)
+        while not sta_if.isconnected():
+            pass
+    print("Conexión WiFi exitosa")
+
+def connect_mqtt():
+    client = MQTTClient("esp32", mqtt_broker)
+    client.connect()
+    print("Conexión MQTT exitosa")
+    return client
+
+def read_joystick():
+    global last_position
+
+    x_value = pin_x.read()
+    y_value = pin_y.read()
+
+    # Definir los rangos para los ejes X e Y del joystick
+    x_threshold = 100 # Valor umbral para el eje X
+    y_threshold = 100  # Valor umbral para el eje Y
+
+    # Determinar el lado hacia donde se ha movido el joystick
+    if x_value < x_threshold:
+        position = "Izquierda"
+    elif x_value > 4096 - x_threshold:
+        position = "Derecha"
+    elif y_value < y_threshold:
+        position = "Arriba"
+    elif y_value > 4096 - y_threshold:
+        position = "Abajo"
+    else:
+        position = "Centro"  # Si el joystick está en el centro
+
+    # Verificar si la posición actual es diferente a la última posición
+    if position != last_position:
+        last_position = position
+        return position
+    else:
+        return None  # No hay cambio de posición
+
+def publish_data(client, topic, payload):
+    client.publish(topic, payload)
+    print(f"Dato publicado en {topic}: {payload}")
+
+def main():
+    connect_wifi()
+    mqtt_client = connect_mqtt()
+
+    while True:
+        # Leer el joystick
+        joystick_position = read_joystick()
+        if joystick_position is not None:
+            publish_data(mqtt_client, mqtt_topic, joystick_position)
+
+        time.sleep(0.5)  # Publicar cada 0.5 segundos
+
+if _name_ == "_main_":
+    main()
+
+/////////////////////////////
+json
+//////////////////////////
+
+[
+    {
+        "id": "510f2ca5574f843f",
+        "type": "tab",
+        "label": "Flujo 1",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "5c254af7e6297f9d",
+        "type": "mqtt in",
+        "z": "510f2ca5574f843f",
+        "name": "",
+        "topic": "utng/arg/joystick",
+        "qos": "2",
+        "datatype": "auto",
+        "broker": "894951dafb5e412e",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 100,
+        "y": 120,
+        "wires": [
+            [
+                "f9346ea72f85946d",
+                "332327fe01aaf71b"
+            ]
+        ]
+    },
+    {
+        "id": "f9346ea72f85946d",
+        "type": "postgresql",
+        "z": "510f2ca5574f843f",
+        "name": "",
+        "query": "INSERT INTO joystick_data (direction) VALUES ('´{{msg.payload}}');",
+        "postgreSQLConfig": "9277f660ec41eacb",
+        "split": false,
+        "rowsPerMsg": 1,
+        "outputs": 1,
+        "x": 450,
+        "y": 140,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "332327fe01aaf71b",
+        "type": "debug",
+        "z": "510f2ca5574f843f",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 230,
+        "y": 320,
+        "wires": []
+    },
+    {
+        "id": "894951dafb5e412e",
+        "type": "mqtt-broker",
+        "name": "",
+        "broker": "192.168.148.200",
+        "port": "1883",
+        "clientid": "",
+        "autoConnect": true,
+        "usetls": false,
+        "protocolVersion": "4",
+        "keepalive": "60",
+        "cleansession": true,
+        "autoUnsubscribe": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthPayload": "",
+        "birthMsg": {},
+        "closeTopic": "",
+        "closeQos": "0",
+        "closePayload": "",
+        "closeMsg": {},
+        "willTopic": "",
+        "willQos": "0",
+        "willPayload": "",
+        "willMsg": {},
+        "userProps": "",
+        "sessionExpiry": ""
+    },
+    {
+        "id": "9277f660ec41eacb",
+        "type": "postgreSQLConfig",
+        "name": "equipo5",
+        "host": "localhost",
+        "hostFieldType": "str",
+        "port": "5432",
+        "portFieldType": "num",
+        "database": "equipo5",
+        "databaseFieldType": "str",
+        "ssl": "false",
+        "sslFieldType": "bool",
+        "applicationName": "",
+        "applicationNameType": "str",
+        "max": "10",
+        "maxFieldType": "num",
+        "idle": "1000",
+        "idleFieldType": "num",
+        "connectionTimeout": "10000",
+        "connectionTimeoutFieldType": "num",
+        "user": "postgres",
+        "userFieldType": "str",
+        "password": "12345",
+        "passwordFieldType": "str"
+    }
+]

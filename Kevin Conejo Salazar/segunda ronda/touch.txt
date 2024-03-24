@@ -1,0 +1,205 @@
+/////////////////////////
+touch
+/////////////////////////////
+
+from umqtt.simple import MQTTClient
+from machine import Pin
+import time
+
+# Configuración de la red WiFi
+ssid = "No Paso Internet Ivana"
+password = "123456789"
+# Configuración del broker MQTT
+mqtt_broker = "192.168.148.200"
+mqtt_topic= "utng/arg/touch"
+
+# Configuración del pin del sensor táctil
+pin_touch = Pin(32, Pin.IN)
+
+def connect_wifi():
+    import network
+    sta_if = network.WLAN(network.STA_IF)
+    if not sta_if.isconnected():
+        print("Conectando a WiFi...")
+        sta_if.active(True)
+        sta_if.connect(ssid, password)
+        while not sta_if.isconnected():
+            pass
+    print("Conexión WiFi exitosa")
+
+def connect_mqtt():
+    client = MQTTClient("esp32", mqtt_broker)
+    client.connect()
+    print("Conexión MQTT exitosa")
+    return client
+
+def read_touch_sensor():
+    return pin_touch.value() == 1  # Devuelve True si se detecta un toque, False de lo contrario
+
+def publish_data(client, topic, payload):
+    client.publish(topic, payload)
+    print(f"Dato publicado en {topic}: {payload}")
+
+def main():
+    connect_wifi()
+    mqtt_client = connect_mqtt()
+
+    while True:
+        # Leer el sensor táctil
+        touch_value = read_touch_sensor()
+        touch_payload = "True" if touch_value else "False"
+        publish_data(mqtt_client, mqtt_topic, touch_payload)
+
+        time.sleep(1.5)  # Publicar cada 10 segundos
+
+if _name_ == "_main_":
+    main()
+
+
+///////////////////////
+json
+///////////////////
+
+[
+    {
+        "id": "7414bb421e557174",
+        "type": "tab",
+        "label": "Flow 1",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "cedfaeac1237f395",
+        "type": "mqtt in",
+        "z": "7414bb421e557174",
+        "name": "",
+        "topic": "utng/arg/touch",
+        "qos": "2",
+        "datatype": "auto",
+        "broker": "894951dafb5e412e",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 110,
+        "y": 160,
+        "wires": [
+            [
+                "76f211b1695f474b",
+                "3a0b12033ee336d7"
+            ]
+        ]
+    },
+    {
+        "id": "76f211b1695f474b",
+        "type": "debug",
+        "z": "7414bb421e557174",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 630,
+        "y": 220,
+        "wires": []
+    },
+    {
+        "id": "3a0b12033ee336d7",
+        "type": "switch",
+        "z": "7414bb421e557174",
+        "name": "Filtrar valor True",
+        "property": "payload",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "True",
+                "vt": "str"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 1,
+        "x": 280,
+        "y": 260,
+        "wires": [
+            [
+                "fba35c76160e1af1"
+            ]
+        ]
+    },
+    {
+        "id": "fba35c76160e1af1",
+        "type": "postgresql",
+        "z": "7414bb421e557174",
+        "name": "",
+        "query": "INSERT INTO sensor_touch (sensor_value) VALUES (TRUE);",
+        "postgreSQLConfig": "9277f660ec41eacb",
+        "split": false,
+        "rowsPerMsg": 1,
+        "outputs": 1,
+        "x": 470,
+        "y": 140,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "894951dafb5e412e",
+        "type": "mqtt-broker",
+        "name": "",
+        "broker": "192.168.148.200",
+        "port": "1883",
+        "clientid": "",
+        "autoConnect": true,
+        "usetls": false,
+        "protocolVersion": "4",
+        "keepalive": "60",
+        "cleansession": true,
+        "autoUnsubscribe": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthPayload": "",
+        "birthMsg": {},
+        "closeTopic": "",
+        "closeQos": "0",
+        "closePayload": "",
+        "closeMsg": {},
+        "willTopic": "",
+        "willQos": "0",
+        "willPayload": "",
+        "willMsg": {},
+        "userProps": "",
+        "sessionExpiry": ""
+    },
+    {
+        "id": "9277f660ec41eacb",
+        "type": "postgreSQLConfig",
+        "name": "equipo5",
+        "host": "localhost",
+        "hostFieldType": "str",
+        "port": "5432",
+        "portFieldType": "num",
+        "database": "equipo5",
+        "databaseFieldType": "str",
+        "ssl": "false",
+        "sslFieldType": "bool",
+        "applicationName": "",
+        "applicationNameType": "str",
+        "max": "10",
+        "maxFieldType": "num",
+        "idle": "1000",
+        "idleFieldType": "num",
+        "connectionTimeout": "10000",
+        "connectionTimeoutFieldType": "num",
+        "user": "postgres",
+        "userFieldType": "str",
+        "password": "12345",
+        "passwordFieldType": "str"
+    }
+]

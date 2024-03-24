@@ -1,0 +1,180 @@
+////////////////////////
+flame
+//////////////////////////
+
+from machine import Pin
+from umqtt.simple import MQTTClient
+import time
+
+ssid = "Angel"
+password = "12345678"
+mqtt_broker = "192.168.43.150"
+mqtt_topic = "utng/arg/dht11"
+
+flame_sensor_pin = 14  # Pin GPIO donde está conectado el sensor de llama
+
+def connect_wifi():
+    import network
+    sta_if = network.WLAN(network.STA_IF)
+    if not sta_if.isconnected():
+        print("Conectando a WiFi...")
+        sta_if.active(True)
+        sta_if.connect(ssid, password)
+        while not sta_if.isconnected():
+            pass
+    print("Conexión WiFi exitosa")
+
+def connect_mqtt():
+    client = MQTTClient("esp32", mqtt_broker)
+    client.connect()
+    print("Conexión MQTT exitosa")
+    return client
+
+def read_sensor():
+    # Agrega la lectura del sensor de llama
+    flame_detected = Pin(flame_sensor_pin, Pin.IN).value()
+    return flame_detected
+
+def publish_data(client, flame_detected):
+    message = "Fuego cerca" if flame_detected else "No se detecta fuego"
+    client.publish(mqtt_topic, message)
+
+
+def main():
+    connect_wifi()
+    mqtt_client = connect_mqtt()
+
+    while True:
+        flame_detected = read_sensor()
+        publish_data(mqtt_client, flame_detected)
+        time.sleep(3)  # Publicar cada 10 segundos
+
+if _name_ == "_main_":
+    main()
+
+
+
+////////////////////////7
+json
+//////////////////////////
+
+[
+    {
+        "id": "91a647978dc60584",
+        "type": "tab",
+        "label": "Flow 1",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "920b5508a95e06f5",
+        "type": "mqtt in",
+        "z": "91a647978dc60584",
+        "name": "",
+        "topic": "utng/arg/dht11",
+        "qos": "2",
+        "datatype": "auto",
+        "broker": "894951dafb5e412e",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 100,
+        "y": 160,
+        "wires": [
+            [
+                "e18e19efae38091f"
+            ]
+        ]
+    },
+    {
+        "id": "e18e19efae38091f",
+        "type": "function",
+        "z": "91a647978dc60584",
+        "name": "",
+        "func": "if (msg.payload === \"Fuego cerca\") {\n    var insertQuery = \"INSERT INTO fire_data2(flame_detected, detection_time) VALUES(true, NOW())\";\n    msg.query = insertQuery;\n    return msg;\n} else {\n    // No hace nada si no se detecta fuego\n    return null;\n}\n\n",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 280,
+        "y": 100,
+        "wires": [
+            [
+                "f7b47c518ebdc29c"
+            ]
+        ]
+    },
+    {
+        "id": "f7b47c518ebdc29c",
+        "type": "postgresql",
+        "z": "91a647978dc60584",
+        "name": "",
+        "query": "INSERT INTO fire_data2(flame_detected, message) VALUES('{{msg.payload.flame_detected}}', '{{msg.payload.message}}')\n",
+        "postgreSQLConfig": "9277f660ec41eacb",
+        "split": false,
+        "rowsPerMsg": 1,
+        "outputs": 1,
+        "x": 510,
+        "y": 160,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "894951dafb5e412e",
+        "type": "mqtt-broker",
+        "name": "",
+        "broker": "192.168.43.150",
+        "port": "1883",
+        "clientid": "",
+        "autoConnect": true,
+        "usetls": false,
+        "protocolVersion": "4",
+        "keepalive": "60",
+        "cleansession": true,
+        "autoUnsubscribe": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthPayload": "",
+        "birthMsg": {},
+        "closeTopic": "",
+        "closeQos": "0",
+        "closePayload": "",
+        "closeMsg": {},
+        "willTopic": "",
+        "willQos": "0",
+        "willPayload": "",
+        "willMsg": {},
+        "userProps": "",
+        "sessionExpiry": ""
+    },
+    {
+        "id": "9277f660ec41eacb",
+        "type": "postgreSQLConfig",
+        "name": "equipo5",
+        "host": "localhost",
+        "hostFieldType": "str",
+        "port": "5432",
+        "portFieldType": "num",
+        "database": "equipo5",
+        "databaseFieldType": "str",
+        "ssl": "false",
+        "sslFieldType": "bool",
+        "applicationName": "",
+        "applicationNameType": "str",
+        "max": "10",
+        "maxFieldType": "num",
+        "idle": "1000",
+        "idleFieldType": "num",
+        "connectionTimeout": "10000",
+        "connectionTimeoutFieldType": "num",
+        "user": "postgres",
+        "userFieldType": "str",
+        "password": "12345",
+        "passwordFieldType": "str"
+    }
+]
