@@ -1,0 +1,63 @@
+#include <Arduino.h>
+#include <SPI.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_LEDBackpack.h>
+
+#define KY008_PIN 32  // Pin conectado al sensor KY-008
+
+// Definición del display láser
+Adafruit_AlphaNum4 alpha4 = Adafruit_AlphaNum4();
+#define DISPLAY_ON 0b1111
+#define DISPLAY_OFF 0b0000
+
+void setup() {
+  Serial.begin(9600);
+  
+  // Inicialización del display láser
+  alpha4.begin(0x70);
+  alpha4.clear();
+  alpha4.writeDigitAscii(0, 'L');
+  alpha4.writeDigitAscii(1, 'A');
+  alpha4.writeDigitAscii(2, 'S');
+  alpha4.writeDigitAscii(3, 'E');
+  alpha4.writeDigitAscii(4, 'R');
+  alpha4.writeDigitAscii(5, ' ');
+  alpha4.writeDigitAscii(6, 'O');
+  alpha4.writeDigitAscii(7, 'F');
+  alpha4.writeDisplay();
+  
+  pinMode(KY008_PIN, INPUT);
+
+  Serial.println("Iniciando...");
+}
+
+void loop() {
+  // Leer el estado del sensor KY-008
+  int sensorValue = digitalRead(KY008_PIN);
+
+  if (sensorValue == HIGH) {
+    // Si el sensor detecta algo, apagar el láser
+    alpha4.writeDigitRaw(0, DISPLAY_OFF);
+    alpha4.writeDigitRaw(1, DISPLAY_OFF);
+    alpha4.writeDigitRaw(2, DISPLAY_OFF);
+    alpha4.writeDigitRaw(3, DISPLAY_OFF);
+    alpha4.writeDigitRaw(4, DISPLAY_OFF);
+    alpha4.writeDigitRaw(5, DISPLAY_OFF);
+    alpha4.writeDigitRaw(6, DISPLAY_OFF);
+    alpha4.writeDigitRaw(7, DISPLAY_OFF);
+    alpha4.writeDisplay();
+  } else {
+    // Si el sensor no detecta nada, mostrar "LASER OFF"
+    alpha4.writeDigitAscii(0, 'L');
+    alpha4.writeDigitAscii(1, 'A');
+    alpha4.writeDigitAscii(2, 'S');
+    alpha4.writeDigitAscii(3, 'E');
+    alpha4.writeDigitAscii(4, 'R');
+    alpha4.writeDigitAscii(5, ' ');
+    alpha4.writeDigitAscii(6, 'O');
+    alpha4.writeDigitAscii(7, 'F');
+    alpha4.writeDisplay();
+  }
+
+  delay(100); // Pequeña pausa para evitar la detección falsa
+}

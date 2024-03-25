@@ -1,0 +1,204 @@
+/////////////////////////////
+sensor de enclinacion
+///////////////////////////////
+from umqtt.simple import MQTTClient
+from machine import Pin
+import time
+
+# Configuración de la red WiFi
+ssid = "No Paso Internet Ivana"
+password = "123456789"
+# Configuración del broker MQTT
+mqtt_broker = "192.168.148.200"
+mqtt_topic = "utng/arg/tilt"
+
+# Configuración del pin del sensor de inclinación (tilt switch)
+pin_tilt = Pin(32, Pin.IN)
+
+def connect_wifi():
+    import network
+    sta_if = network.WLAN(network.STA_IF)
+    if not sta_if.isconnected():
+        print("Conectando a WiFi...")
+        sta_if.active(True)
+        sta_if.connect(ssid, password)
+        while not sta_if.isconnected():
+            pass
+    print("Conexión WiFi exitosa")
+
+def connect_mqtt():
+    client = MQTTClient("esp32", mqtt_broker)
+    client.connect()
+    print("Conexión MQTT exitosa")
+    return client
+
+def read_tilt_switch():
+    return pin_tilt.value() == 1  # Devuelve True si está inclinado, False de lo contrario
+
+def publish_data(client, topic, payload):
+    client.publish(topic, payload)
+    print(f"Dato publicado en {topic}: {payload}")
+
+def main():
+    connect_wifi()
+    mqtt_client = connect_mqtt()
+
+    while True:
+        # Leer el estado del sensor de inclinación
+        tilt_state = read_tilt_switch()
+        tilt_payload = "True" if tilt_state else "False"
+        publish_data(mqtt_client, mqtt_topic, tilt_payload)
+
+        time.sleep(1.5)  # Publicar cada 1.5 segundos
+
+if __name__ == "__main__":
+    main()
+
+
+
+/////////////////////////////////
+json
+/////////////////////////////
+[
+    {
+        "id": "bea06a940a974922",
+        "type": "tab",
+        "label": "Flujo 3",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "15836419c8270564",
+        "type": "mqtt in",
+        "z": "bea06a940a974922",
+        "name": "",
+        "topic": "utng/arg/tilt",
+        "qos": "2",
+        "datatype": "auto",
+        "broker": "894951dafb5e412e",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 220,
+        "y": 120,
+        "wires": [
+            [
+                "f6ffbe75aff05522",
+                "aaaa93dda44f7712"
+            ]
+        ]
+    },
+    {
+        "id": "4f6d70cf0bd5ee54",
+        "type": "postgresql",
+        "z": "bea06a940a974922",
+        "name": "",
+        "query": "INSERT INTO sensor_tilt (value) VALUES ('{{msg.payload}}');",
+        "postgreSQLConfig": "9277f660ec41eacb",
+        "split": false,
+        "rowsPerMsg": 1,
+        "outputs": 1,
+        "x": 590,
+        "y": 140,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "f6ffbe75aff05522",
+        "type": "debug",
+        "z": "bea06a940a974922",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 370,
+        "y": 320,
+        "wires": []
+    },
+    {
+        "id": "aaaa93dda44f7712",
+        "type": "switch",
+        "z": "bea06a940a974922",
+        "name": "Filtrar valor True",
+        "property": "payload",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "True",
+                "vt": "str"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 1,
+        "x": 420,
+        "y": 60,
+        "wires": [
+            [
+                "4f6d70cf0bd5ee54"
+            ]
+        ]
+    },
+    {
+        "id": "894951dafb5e412e",
+        "type": "mqtt-broker",
+        "name": "",
+        "broker": "192.168.40.200",
+        "port": "1883",
+        "clientid": "",
+        "autoConnect": true,
+        "usetls": false,
+        "protocolVersion": "4",
+        "keepalive": "60",
+        "cleansession": true,
+        "autoUnsubscribe": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthPayload": "",
+        "birthMsg": {},
+        "closeTopic": "",
+        "closeQos": "0",
+        "closePayload": "",
+        "closeMsg": {},
+        "willTopic": "",
+        "willQos": "0",
+        "willPayload": "",
+        "willMsg": {},
+        "userProps": "",
+        "sessionExpiry": ""
+    },
+    {
+        "id": "9277f660ec41eacb",
+        "type": "postgreSQLConfig",
+        "name": "equipo5",
+        "host": "localhost",
+        "hostFieldType": "str",
+        "port": "5432",
+        "portFieldType": "num",
+        "database": "equipo5",
+        "databaseFieldType": "str",
+        "ssl": "false",
+        "sslFieldType": "bool",
+        "applicationName": "",
+        "applicationNameType": "str",
+        "max": "10",
+        "maxFieldType": "num",
+        "idle": "1000",
+        "idleFieldType": "num",
+        "connectionTimeout": "10000",
+        "connectionTimeoutFieldType": "num",
+        "user": "postgres",
+        "userFieldType": "str",
+        "password": "12345",
+        "passwordFieldType": "str"
+    }
+]

@@ -1,0 +1,218 @@
+/////////////////7
+mini-two-colors display
+///////////////////
+
+from machine import TouchPad, Pin, I2C, Timer
+from umqtt.simple import MQTTClient
+import time
+import ssd1306
+
+# Configuración del sensor táctil
+touch_pin = TouchPad(Pin(14))
+
+# Configuración del LED bicolor
+led_pin_out = Pin(2, Pin.OUT)
+
+# Configuración de la red Wi-Fi
+ssid = "No Paso Internet Ivana"
+password = "123456789"
+mqtt_broker = "192.168.8.200"  # Cambiar a la dirección IP de tu broker MQTT
+mqtt_topic = "utng/arg/Mtwo"
+
+# Configuración de la comunicación I2C para el display OLED
+i2c = I2C(-1, Pin(5), Pin(4))
+
+# Inicializar el objeto del display SSD1306
+oled_width = 128
+oled_height = 64
+oled = ssd1306.SSD1306_I2C(oled_width, oled_height, i2c)
+
+# Temporizador para controlar la duración del mensaje en el display
+display_timer = Timer(1)
+
+# Función para conectar a Wi-Fi
+def connect_wifi():
+    import network
+    sta_if = network.WLAN(network.STA_IF)
+    if not sta_if.isconnected():
+        print("Conectando a WiFi...")
+        sta_if.active(True)
+        sta_if.connect(ssid, password)
+        while not sta_if.isconnected():
+            pass
+    print("Conexión WiFi exitosa")
+
+# Función para conectar a MQTT
+def connect_mqtt():
+    client = MQTTClient("esp32", mqtt_broker)
+    client.connect()
+    print("Conexión MQTT exitosa")
+    return client
+
+# Función para leer el valor del sensor táctil
+def leer_sensor():
+    try:
+        valor = touch_pin.read()
+        return valor < 300
+    except Exception as e:
+        return False
+
+# Función para publicar un mensaje MQTT y mostrarlo en el display
+def publish_touch_event(client, message):
+    client.publish(mqtt_topic, message)
+    print("Mensaje MQTT publicado:", message)
+    show_message("Tocado", message)
+    display_timer.init(period=3000, mode=Timer.ONE_SHOT, callback=clear_display)
+
+# Función para mostrar un mensaje en el display OLED
+def show_message(message, mqtt_message):
+    oled.fill(0)
+    oled.text("", 0, 0)
+    oled.text(mqtt_message, 0, 16)
+    oled.show()
+
+# Función para limpiar el display OLED
+def clear_display(timer):
+    oled.fill(0)
+    oled.show()
+
+# Función principal
+def main():
+    connect_wifi()
+    mqtt_client = connect_mqtt()
+
+    while True:
+        tocado = leer_sensor()
+        if tocado:
+            led_pin_out.on()  # Enciende el LED flash cuando se toca el sensor
+            publish_touch_event(mqtt_client, b"Tocado")
+        else:
+            led_pin_out.off()
+        time.sleep(0.1)  # Espera antes de volver a leer el sensor
+
+if __name__ == "__main__":
+    main()
+
+
+//////////////////7
+json
+////////////////////7
+
+[
+    {
+        "id": "f9bd4f6eac774ce6",
+        "type": "tab",
+        "label": "Flujo 15",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "518903a490c79f38",
+        "type": "mqtt in",
+        "z": "f9bd4f6eac774ce6",
+        "name": "",
+        "topic": "utng/arg/Mtwo",
+        "qos": "2",
+        "datatype": "auto",
+        "broker": "894951dafb5e412e",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 90,
+        "y": 140,
+        "wires": [
+            [
+                "fb7f7ebb47ac83e3",
+                "1dd3220d02b3a57e"
+            ]
+        ]
+    },
+    {
+        "id": "1dd3220d02b3a57e",
+        "type": "postgresql",
+        "z": "f9bd4f6eac774ce6",
+        "name": "",
+        "query": "INSERT INTO Mtwo (valor) VALUES ('{{msg.payload}}');",
+        "postgreSQLConfig": "9277f660ec41eacb",
+        "split": false,
+        "rowsPerMsg": 1,
+        "outputs": 1,
+        "x": 610,
+        "y": 80,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "fb7f7ebb47ac83e3",
+        "type": "debug",
+        "z": "f9bd4f6eac774ce6",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 410,
+        "y": 260,
+        "wires": []
+    },
+    {
+        "id": "894951dafb5e412e",
+        "type": "mqtt-broker",
+        "name": "",
+        "broker": "192.168.8.200",
+        "port": "1883",
+        "clientid": "",
+        "autoConnect": true,
+        "usetls": false,
+        "protocolVersion": "4",
+        "keepalive": "60",
+        "cleansession": true,
+        "autoUnsubscribe": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthPayload": "",
+        "birthMsg": {},
+        "closeTopic": "",
+        "closeQos": "0",
+        "closePayload": "",
+        "closeMsg": {},
+        "willTopic": "",
+        "willQos": "0",
+        "willPayload": "",
+        "willMsg": {},
+        "userProps": "",
+        "sessionExpiry": ""
+    },
+    {
+        "id": "9277f660ec41eacb",
+        "type": "postgreSQLConfig",
+        "name": "equipo5",
+        "host": "localhost",
+        "hostFieldType": "str",
+        "port": "5432",
+        "portFieldType": "num",
+        "database": "equipo5",
+        "databaseFieldType": "str",
+        "ssl": "false",
+        "sslFieldType": "bool",
+        "applicationName": "",
+        "applicationNameType": "str",
+        "max": "10",
+        "maxFieldType": "num",
+        "idle": "1000",
+        "idleFieldType": "num",
+        "connectionTimeout": "10000",
+        "connectionTimeoutFieldType": "num",
+        "user": "postgres",
+        "userFieldType": "str",
+        "password": "12345",
+        "passwordFieldType": "str"
+    }
+]

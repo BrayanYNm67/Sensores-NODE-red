@@ -1,0 +1,216 @@
+//////////////////7
+encoder
+///////////////////7
+
+from machine import Pin
+import time
+from umqtt.simple import MQTTClient
+
+# Configuración de la red WiFi
+ssid = "No Paso Internet Ivana"
+password = "123456789"
+
+# Configuración del broker MQTT
+mqtt_broker = "192.168.40.200"
+mqtt_topic = "utng/arg/encoder"
+
+# Configuración de los pines del encoder KY-040
+CLK = Pin(14, Pin.IN)
+DT = Pin(13, Pin.IN)
+
+# Variables para almacenar el estado anterior de los pines
+last_CLK = CLK.value()
+last_DT = DT.value()
+
+# Variable para almacenar la posición del encoder
+posicion = 0
+
+# Variable para almacenar la dirección del movimiento anterior del encoder
+last_direccion = 0
+
+def actualizar_posicion():
+    global last_CLK, last_DT, posicion, last_direccion
+
+    CLK_state = CLK.value()
+    DT_state = DT.value()
+
+    if CLK_state != last_CLK:
+        if DT_state != CLK_state:
+            if last_direccion == 1:
+                last_direccion = 0
+            else:
+                last_direccion = 1
+            posicion += 1
+        else:
+            if last_direccion == -1:
+                last_direccion = 0
+            else:
+                last_direccion = -1
+            posicion -= 1
+
+    last_CLK = CLK_state
+
+def connect_wifi():
+    import network
+    sta_if = network.WLAN(network.STA_IF)
+    if not sta_if.isconnected():
+        print("Conectando a WiFi...")
+        sta_if.active(True)
+        sta_if.connect(ssid, password)
+        while not sta_if.isconnected():
+            pass
+    print("Conexión WiFi exitosa")
+
+def connect_mqtt():
+    client = MQTTClient("esp32", mqtt_broker)
+    client.connect()
+    print("Conexión MQTT exitosa")
+    return client
+
+def publicar_datos(client, topic, payload):
+    client.publish(topic, payload)
+    print(f"Dato publicado en {topic}: {payload}")
+
+def main():
+    connect_wifi()
+    mqtt_client = connect_mqtt()
+
+    while True:
+        posicion_anterior = posicion  # Guardar la posición anterior
+        actualizar_posicion()
+        
+        if posicion != posicion_anterior:  # Verificar si la posición ha cambiado
+            print("Dirección del encoder:", "Positiva" if last_direccion == 1 else "Negativa" if last_direccion == -1 else "Detenido")
+            print("Posición del encoder:", posicion)
+            publicar_datos(mqtt_client, mqtt_topic, str(posicion))  # Publicar la posición en el tópico MQTT
+
+        time.sleep(0.1)
+
+if __name__ == "__main__":
+    main()
+
+
+
+/////////////////////////////
+json
+/////////////////////////
+
+[
+    {
+        "id": "2196ac2cc7960854",
+        "type": "tab",
+        "label": "Flujo 9",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "85e65ff875564a2b",
+        "type": "mqtt in",
+        "z": "2196ac2cc7960854",
+        "name": "",
+        "topic": "utng/arg/encoder",
+        "qos": "2",
+        "datatype": "auto",
+        "broker": "894951dafb5e412e",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 180,
+        "y": 140,
+        "wires": [
+            [
+                "a618683d962e4d6a",
+                "9d24b93eeb0ea237"
+            ]
+        ]
+    },
+    {
+        "id": "9d24b93eeb0ea237",
+        "type": "postgresql",
+        "z": "2196ac2cc7960854",
+        "name": "",
+        "query": "INSERT INTO encoder (mensaje) VALUES ('{{msg.payload}}');",
+        "postgreSQLConfig": "9277f660ec41eacb",
+        "split": false,
+        "rowsPerMsg": 1,
+        "outputs": 1,
+        "x": 690,
+        "y": 80,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "a618683d962e4d6a",
+        "type": "debug",
+        "z": "2196ac2cc7960854",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 490,
+        "y": 260,
+        "wires": []
+    },
+    {
+        "id": "894951dafb5e412e",
+        "type": "mqtt-broker",
+        "name": "",
+        "broker": "192.168.40.200",
+        "port": "1883",
+        "clientid": "",
+        "autoConnect": true,
+        "usetls": false,
+        "protocolVersion": "4",
+        "keepalive": "60",
+        "cleansession": true,
+        "autoUnsubscribe": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthPayload": "",
+        "birthMsg": {},
+        "closeTopic": "",
+        "closeQos": "0",
+        "closePayload": "",
+        "closeMsg": {},
+        "willTopic": "",
+        "willQos": "0",
+        "willPayload": "",
+        "willMsg": {},
+        "userProps": "",
+        "sessionExpiry": ""
+    },
+    {
+        "id": "9277f660ec41eacb",
+        "type": "postgreSQLConfig",
+        "name": "equipo5",
+        "host": "localhost",
+        "hostFieldType": "str",
+        "port": "5432",
+        "portFieldType": "num",
+        "database": "equipo5",
+        "databaseFieldType": "str",
+        "ssl": "false",
+        "sslFieldType": "bool",
+        "applicationName": "",
+        "applicationNameType": "str",
+        "max": "10",
+        "maxFieldType": "num",
+        "idle": "1000",
+        "idleFieldType": "num",
+        "connectionTimeout": "10000",
+        "connectionTimeoutFieldType": "num",
+        "user": "postgres",
+        "userFieldType": "str",
+        "password": "12345",
+        "passwordFieldType": "str"
+    }
+]
+ 

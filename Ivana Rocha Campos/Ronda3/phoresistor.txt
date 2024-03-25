@@ -1,0 +1,188 @@
+//////////////////////
+phoresistor
+/////////////////77
+
+from machine import Pin, ADC
+import time
+import network
+from umqtt.simple import MQTTClient
+
+SENSOR_PIN = 34  # Pin analógico conectado al sensor (pin S de módulo a entrada analógica A0)
+
+# Inicializar el pin analógico para leer el sensor
+adc = ADC(Pin(SENSOR_PIN))
+
+ssid = "No Paso Internet Ivana"
+password = "123456789"
+mqtt_broker = "192.168.68.200"  # Dirección IP del broker MQTT
+mqtt_topic = "utng/arg/fotoresistencia"    # Tema MQTT para publicar el estado del LED
+
+# Conectar a WiFi
+def connect_wifi():
+    sta_if = network.WLAN(network.STA_IF)
+    if not sta_if.isconnected():
+        print("Conectando a WiFi...")
+        sta_if.active(True)
+        sta_if.connect(ssid, password)
+        while not sta_if.isconnected():
+            pass
+    print("Conexión WiFi exitosa")
+
+# Conectar a MQTT
+def connect_mqtt():
+    client = MQTTClient("esp32", mqtt_broker)
+    client.connect()
+    print("Conexión MQTT exitosa")
+    return client
+
+# Publicar estado del LED en MQTT
+def publish_led_state(client):
+    client.publish(mqtt_topic, "LED encendido")
+    print("Estado del LED publicado: LED encendido")
+
+# Función principal
+def main():
+    connect_wifi()
+    mqtt_client = connect_mqtt()
+
+    while True:
+        # Leer el valor del sensor
+        valor = adc.read()
+
+        # Convertir los valores de entrada de 0-1023 a 255-0 para el brillo
+        pwm_value = int((valor / 1023) * 255)
+
+        # Simulación del LED en la consola
+        if pwm_value > 0:
+            print("LED encendido")
+            publish_led_state(mqtt_client)
+
+        # Pequeña pausa antes de la próxima lectura
+        time.sleep(1)
+
+if __name__ == "__main__":
+    main()
+
+
+/////////////////////////
+json
+//////////////////////////
+
+[
+    {
+        "id": "3bc09aa04522aacf",
+        "type": "tab",
+        "label": "Flujo 13",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "e9b77e74000576b7",
+        "type": "mqtt in",
+        "z": "3bc09aa04522aacf",
+        "name": "",
+        "topic": "utng/arg/fotoresistencia",
+        "qos": "2",
+        "datatype": "auto",
+        "broker": "894951dafb5e412e",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 120,
+        "y": 120,
+        "wires": [
+            [
+                "2eab25d45b038bdc",
+                "78f31a2353e4e92d"
+            ]
+        ]
+    },
+    {
+        "id": "78f31a2353e4e92d",
+        "type": "postgresql",
+        "z": "3bc09aa04522aacf",
+        "name": "",
+        "query": "INSERT INTO fotoR (valor) VALUES ('{{msg.payload}}');",
+        "postgreSQLConfig": "9277f660ec41eacb",
+        "split": false,
+        "rowsPerMsg": 1,
+        "outputs": 1,
+        "x": 610,
+        "y": 60,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "2eab25d45b038bdc",
+        "type": "debug",
+        "z": "3bc09aa04522aacf",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 410,
+        "y": 240,
+        "wires": []
+    },
+    {
+        "id": "894951dafb5e412e",
+        "type": "mqtt-broker",
+        "name": "",
+        "broker": "192.168.68.200",
+        "port": "1883",
+        "clientid": "",
+        "autoConnect": true,
+        "usetls": false,
+        "protocolVersion": "4",
+        "keepalive": "60",
+        "cleansession": true,
+        "autoUnsubscribe": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthPayload": "",
+        "birthMsg": {},
+        "closeTopic": "",
+        "closeQos": "0",
+        "closePayload": "",
+        "closeMsg": {},
+        "willTopic": "",
+        "willQos": "0",
+        "willPayload": "",
+        "willMsg": {},
+        "userProps": "",
+        "sessionExpiry": ""
+    },
+    {
+        "id": "9277f660ec41eacb",
+        "type": "postgreSQLConfig",
+        "name": "equipo5",
+        "host": "localhost",
+        "hostFieldType": "str",
+        "port": "5432",
+        "portFieldType": "num",
+        "database": "equipo5",
+        "databaseFieldType": "str",
+        "ssl": "false",
+        "sslFieldType": "bool",
+        "applicationName": "",
+        "applicationNameType": "str",
+        "max": "10",
+        "maxFieldType": "num",
+        "idle": "1000",
+        "idleFieldType": "num",
+        "connectionTimeout": "10000",
+        "connectionTimeoutFieldType": "num",
+        "user": "postgres",
+        "userFieldType": "str",
+        "password": "12345",
+        "passwordFieldType": "str"
+    }
+]

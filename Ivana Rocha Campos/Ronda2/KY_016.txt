@@ -1,0 +1,71 @@
+#include <Arduino.h>
+#include <Wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1351.h>
+
+#define S0_PIN 4  // Pin S0 conectado al pin 4
+#define S1_PIN 5  // Pin S1 conectado al pin 5
+#define S2_PIN 6  // Pin S2 conectado al pin 6
+#define S3_PIN 7  // Pin S3 conectado al pin 7
+#define OUT_PIN 8 // Pin de salida conectado al pin 8
+#define LED_PIN 13 // Pin del LED de estado
+
+Adafruit_SSD1351 tft = Adafruit_SSD1351(128, 128, &Wire, 8, SSD1351_RES);
+
+void setup() {
+  pinMode(S0_PIN, OUTPUT);
+  pinMode(S1_PIN, OUTPUT);
+  pinMode(S2_PIN, OUTPUT);
+  pinMode(S3_PIN, OUTPUT);
+  pinMode(OUT_PIN, INPUT);
+  pinMode(LED_PIN, OUTPUT);
+
+  digitalWrite(S0_PIN, HIGH);
+  digitalWrite(S1_PIN, HIGH);
+
+  Serial.begin(9600);
+  Serial.println("Iniciando...");
+
+  if (!tft.begin()) {
+    Serial.println("No se pudo inicializar la pantalla");
+    while (1);
+  }
+
+  tft.fillScreen(BLACK);
+  tft.setTextColor(WHITE);
+  tft.setTextSize(1);
+}
+
+void loop() {
+  digitalWrite(S2_PIN, LOW);
+  digitalWrite(S3_PIN, LOW);
+
+  // Leer el valor del sensor
+  int red = pulseIn(OUT_PIN, digitalRead(OUT_PIN) == HIGH ? LOW : HIGH);
+  int green = pulseIn(OUT_PIN, digitalRead(OUT_PIN) == HIGH ? LOW : HIGH);
+  int blue = pulseIn(OUT_PIN, digitalRead(OUT_PIN) == HIGH ? LOW : HIGH);
+
+  // Encender el LED para indicar que se está leyendo un color
+  digitalWrite(LED_PIN, HIGH);
+
+  // Determinar el color
+  if (red < 50 && green < 50 && blue < 50) {
+    // Si no se detecta color, mostrar "Negro" en la pantalla
+    tft.fillScreen(BLACK);
+    tft.setCursor(0, 0);
+    tft.println("Negro");
+  } else {
+    // Si se detecta color, mostrar el color en la pantalla
+    tft.fillScreen(tft.Color565(red, green, blue));
+    tft.setCursor(0, 0);
+    tft.print("Color: ");
+    tft.println(red, HEX);
+    tft.print(green, HEX);
+    tft.print(blue, HEX);
+  }
+
+  // Apagar el LED después de mostrar el color
+  digitalWrite(LED_PIN, LOW);
+
+  delay(1000); // Pequeña pausa antes de la siguiente lectura
+}

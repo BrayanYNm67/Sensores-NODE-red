@@ -1,0 +1,209 @@
+//////////////////7
+buzzer pasivo
+////////////////////
+
+from machine import TouchPad, Pin
+from umqtt.simple import MQTTClient
+import time
+
+# Configuración del sensor táctil
+touch_pin = TouchPad(Pin(4))
+
+# Configuración del buzzer (zumbador)
+buzzer_pin = Pin(2, Pin.OUT)  # Pin para el zumbador
+
+# Configuración de la red Wi-Fi
+ssid = "No Paso Internet Ivana"
+password = "123456789"
+mqtt_broker = "192.168.68.200"  # Cambiar a la dirección IP de tu broker MQTT
+mqtt_topic = "utng/arg/buzzerP"
+
+# Función para conectar a Wi-Fi
+def connect_wifi():
+    import network
+    sta_if = network.WLAN(network.STA_IF)
+    if not sta_if.isconnected():
+        print("Conectando a WiFi...")
+        sta_if.active(True)
+        sta_if.connect(ssid, password)
+        while not sta_if.isconnected():
+            pass
+    print("Conexión WiFi exitosa")
+
+# Función para conectar a MQTT
+def connect_mqtt():
+    client = MQTTClient("esp32", mqtt_broker)
+    client.connect()
+    print("Conexión MQTT exitosa")
+    return client
+
+# Función para leer el valor del sensor táctil
+def leer_sensor():
+    try:
+        valor = touch_pin.read()
+        return valor < 300
+    except Exception as e:
+        return False
+
+# Función para publicar un mensaje MQTT cuando se toca el sensor
+def publish_touch_event(client):
+    client.publish(mqtt_topic, b"Tocado")
+    print("Mensaje MQTT publicado: Tocado")
+
+# Función para hacer que el zumbador emita sonido
+def hacer_sonido():
+    buzzer_pin.on()
+
+# Función para detener el sonido del zumbador
+def detener_sonido():
+    buzzer_pin.off()
+
+# Función principal
+def main():
+    connect_wifi()
+    mqtt_client = connect_mqtt()
+
+    sonido_activado = False  # Bandera para controlar el estado del sonido
+
+    while True:
+        try:
+            tocado = leer_sensor()
+            if tocado:
+                if not sonido_activado:
+                    hacer_sonido()  # Activar el sonido si no está activado
+                    sonido_activado = True
+                    publish_touch_event(mqtt_client)
+            else:
+                if sonido_activado:
+                    detener_sonido()  # Detener el sonido si está activado
+                    sonido_activado = False
+            time.sleep(1)  # Espera antes de volver a leer el sensor
+        except Exception as e:
+            print("Error en el bucle principal:", e)
+
+if __name__ == "__main__":
+    main()
+
+///////////////////////
+json
+//////////////////
+
+
+[
+    {
+        "id": "9f383e108896c66e",
+        "type": "tab",
+        "label": "Flujo 18",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "2e7c88c390ff3d41",
+        "type": "mqtt in",
+        "z": "9f383e108896c66e",
+        "name": "",
+        "topic": "utng/arg/buzzerP",
+        "qos": "2",
+        "datatype": "auto",
+        "broker": "894951dafb5e412e",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 180,
+        "y": 160,
+        "wires": [
+            [
+                "88b4a7087d2f8b50",
+                "3004cd5bb1333c70"
+            ]
+        ]
+    },
+    {
+        "id": "3004cd5bb1333c70",
+        "type": "postgresql",
+        "z": "9f383e108896c66e",
+        "name": "",
+        "query": "INSERT INTO buzzerP (valor) VALUES ('{{msg.payload}}');",
+        "postgreSQLConfig": "9277f660ec41eacb",
+        "split": false,
+        "rowsPerMsg": 1,
+        "outputs": 1,
+        "x": 690,
+        "y": 100,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "88b4a7087d2f8b50",
+        "type": "debug",
+        "z": "9f383e108896c66e",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 490,
+        "y": 280,
+        "wires": []
+    },
+    {
+        "id": "894951dafb5e412e",
+        "type": "mqtt-broker",
+        "name": "",
+        "broker": "192.168.68.200",
+        "port": "1883",
+        "clientid": "",
+        "autoConnect": true,
+        "usetls": false,
+        "protocolVersion": "4",
+        "keepalive": "60",
+        "cleansession": true,
+        "autoUnsubscribe": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthPayload": "",
+        "birthMsg": {},
+        "closeTopic": "",
+        "closeQos": "0",
+        "closePayload": "",
+        "closeMsg": {},
+        "willTopic": "",
+        "willQos": "0",
+        "willPayload": "",
+        "willMsg": {},
+        "userProps": "",
+        "sessionExpiry": ""
+    },
+    {
+        "id": "9277f660ec41eacb",
+        "type": "postgreSQLConfig",
+        "name": "equipo5",
+        "host": "localhost",
+        "hostFieldType": "str",
+        "port": "5432",
+        "portFieldType": "num",
+        "database": "equipo5",
+        "databaseFieldType": "str",
+        "ssl": "false",
+        "sslFieldType": "bool",
+        "applicationName": "",
+        "applicationNameType": "str",
+        "max": "10",
+        "maxFieldType": "num",
+        "idle": "1000",
+        "idleFieldType": "num",
+        "connectionTimeout": "10000",
+        "connectionTimeoutFieldType": "num",
+        "user": "postgres",
+        "userFieldType": "str",
+        "password": "12345",
+        "passwordFieldType": "str"
+    }
+]

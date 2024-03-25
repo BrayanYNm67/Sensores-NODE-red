@@ -1,0 +1,240 @@
+////////////////////
+rgb display
+
+7//////////////////////7
+
+from machine import Pin, PWM, I2C, Timer
+from umqtt.simple import MQTTClient
+import time
+import network
+import ssd1306
+
+# Definir los pines conectados a los pines del módulo KY-009
+pin_R = 14  # Conectar al pin rojo del módulo
+pin_G = 13  # Conectar al pin verde del módulo
+pin_B = 12  # Conectar al pin azul del módulo
+
+# Configurar los pines como PWM (Modulación de Ancho de Pulso)
+pwm_R = PWM(Pin(pin_R), freq=5000)  # Frecuencia de PWM: 5 kHz
+pwm_G = PWM(Pin(pin_G), freq=5000)
+pwm_B = PWM(Pin(pin_B), freq=5000)
+
+# Colores
+colors = [(1023, 0, 0), (0, 1023, 0), (0, 0, 1023)]
+color_names = ["Azul", "Verde", "Rojo"]
+
+# Configuración MQTT
+mqtt_broker = "192.168.8.200"  # Dirección IP del broker MQTT
+mqtt_topic = "utng/arg/rgb"
+
+# Configuración de red WiFi
+ssid = "No Paso Internet Ivana"
+password = "123456789"
+
+# Configuración de la comunicación I2C para el display OLED
+i2c = I2C(-1, Pin(5), Pin(4))
+
+# Inicializar el objeto del display SSD1306
+oled_width = 128
+oled_height = 64
+oled = ssd1306.SSD1306_I2C(oled_width, oled_height, i2c)
+
+# Temporizador para controlar la duración del mensaje en el display
+display_timer = Timer(1)
+
+# Función para configurar el color
+def set_color(r, g, b):
+    # Asegurarse de que los valores estén dentro del rango válido (0-1023)
+    r = max(0, min(r, 1023))
+    g = max(0, min(g, 1023))
+    b = max(0, min(b, 1023))
+    # Configurar los valores de PWM
+    pwm_R.duty(r)
+    pwm_G.duty(g)
+    pwm_B.duty(b)
+
+# Función para imprimir el color actual
+def print_color(color_index):
+    print(color_names[color_index])
+
+# Función para publicar el color actual
+def publish_color(color_index, client):
+    client.publish(mqtt_topic, color_names[color_index])
+
+# Función para conectar a MQTT
+def connect_mqtt():
+    client = MQTTClient("esp32", mqtt_broker)
+    client.connect()
+    print("Conexión MQTT exitosa")
+    return client
+
+# Función para conectar a la red WiFi
+def connect_wifi():
+    sta_if = network.WLAN(network.STA_IF)
+    if not sta_if.isconnected():
+        print("Conectando a WiFi...")
+        sta_if.active(True)
+        sta_if.connect(ssid, password)
+        while not sta_if.isconnected():
+            pass
+    print("Conexión WiFi exitosa")
+
+# Función para mostrar un mensaje en el display OLED
+def show_message(message):
+    oled.fill(0)
+    oled.text(message, 0, 0)
+    oled.show()
+
+# Cambiar gradualmente el color
+def fade_color(client):
+    current_color_index = 0
+    while True:
+        next_color_index = (current_color_index + 1) % len(colors)
+        for i in range(1024):
+            # Calcular el color actual en función del cambio gradual
+            r = int(colors[current_color_index][0] + (colors[next_color_index][0] - colors[current_color_index][0]) * i / 1023)
+            g = int(colors[current_color_index][1] + (colors[next_color_index][1] - colors[current_color_index][1]) * i / 1023)
+            b = int(colors[current_color_index][2] + (colors[next_color_index][2] - colors[current_color_index][2]) * i / 1023)
+            set_color(r, g, b)
+            # Imprimir y publicar el color si cambia
+            if i == 0:
+                print_color(next_color_index)
+                publish_color(next_color_index, client)
+                show_message(color_names[next_color_index])
+            time.sleep(0.01)
+        current_color_index = next_color_index
+
+# Ejecutar el efecto de cambio de color gradual
+def main():
+    connect_wifi()
+    mqtt_client = connect_mqtt()
+    fade_color(mqtt_client)
+
+if __name__ == "__main__":
+    main()
+
+
+
+//////////////////7
+json
+//////////////
+
+
+[
+    {
+        "id": "de3298493aad69cd",
+        "type": "tab",
+        "label": "Flujo 10",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "86042e959a1ededf",
+        "type": "mqtt in",
+        "z": "de3298493aad69cd",
+        "name": "",
+        "topic": "utng/arg/rgb",
+        "qos": "2",
+        "datatype": "auto",
+        "broker": "894951dafb5e412e",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 130,
+        "y": 140,
+        "wires": [
+            [
+                "8a5a4f1a357a9f1c",
+                "eb6a6af46c36ddbb"
+            ]
+        ]
+    },
+    {
+        "id": "eb6a6af46c36ddbb",
+        "type": "postgresql",
+        "z": "de3298493aad69cd",
+        "name": "",
+        "query": "INSERT INTO smd_rgb (color) VALUES ('{{msg.payload}}');",
+        "postgreSQLConfig": "9277f660ec41eacb",
+        "split": false,
+        "rowsPerMsg": 1,
+        "outputs": 1,
+        "x": 650,
+        "y": 80,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "8a5a4f1a357a9f1c",
+        "type": "debug",
+        "z": "de3298493aad69cd",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 450,
+        "y": 260,
+        "wires": []
+    },
+    {
+        "id": "894951dafb5e412e",
+        "type": "mqtt-broker",
+        "name": "",
+        "broker": "192.168.68.200",
+        "port": "1883",
+        "clientid": "",
+        "autoConnect": true,
+        "usetls": false,
+        "protocolVersion": "4",
+        "keepalive": "60",
+        "cleansession": true,
+        "autoUnsubscribe": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthPayload": "",
+        "birthMsg": {},
+        "closeTopic": "",
+        "closeQos": "0",
+        "closePayload": "",
+        "closeMsg": {},
+        "willTopic": "",
+        "willQos": "0",
+        "willPayload": "",
+        "willMsg": {},
+        "userProps": "",
+        "sessionExpiry": ""
+    },
+    {
+        "id": "9277f660ec41eacb",
+        "type": "postgreSQLConfig",
+        "name": "equipo5",
+        "host": "localhost",
+        "hostFieldType": "str",
+        "port": "5432",
+        "portFieldType": "num",
+        "database": "equipo5",
+        "databaseFieldType": "str",
+        "ssl": "false",
+        "sslFieldType": "bool",
+        "applicationName": "",
+        "applicationNameType": "str",
+        "max": "10",
+        "maxFieldType": "num",
+        "idle": "1000",
+        "idleFieldType": "num",
+        "connectionTimeout": "10000",
+        "connectionTimeoutFieldType": "num",
+        "user": "postgres",
+        "userFieldType": "str",
+        "password": "12345",
+        "passwordFieldType": "str"
+    }
+]

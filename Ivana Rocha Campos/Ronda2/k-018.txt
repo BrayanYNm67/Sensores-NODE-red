@@ -1,0 +1,18 @@
+#define SENSOR_PIN 32 // Pin conectado al sensor KY-018
+
+void setup() {
+  pinMode(SENSOR_PIN, INPUT);
+  Serial.begin(9600);
+  Serial.println("Iniciando...");
+}
+
+void loop() {
+  // Leer el valor de la luz del sensor KY-018
+  int lightValue = analogRead(SENSOR_PIN);
+  
+  // Mostrar el valor de luz en el monitor serial
+  Serial.print("Valor de luz: ");
+  Serial.println(lightValue);
+
+  delay(1000); // Pausa para evitar la lectura demasiado rápida
+}
